@@ -1,0 +1,98 @@
+name: Vulnerable Notes Security Demo
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vulnerable-notes-security:
+    name: Scan Insecure Notes App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare security reports directory
+        run: mkdir -p security-reports
+
+      - name: Build insecure notes image
+        run: docker build -t insecure-notes-demo:local ./vulnerable-demo
+
+      - name: Run insecure notes container
+        run: |
+          docker run -d \
+            --name insecure-notes-demo \
+            -p 4000:4000 \
+            insecure-notes-demo:local
+
+      - name: Wait for insecure notes health check
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://localhost:4000/health; then
+              echo "Insecure Notes demo is running."
+              exit 0
+            fi
+
+            echo "Waiting for Insecure Notes demo..."
+            sleep 2
+          done
+
+          echo "Insecure Notes demo failed to start."
+          docker logs insecure-notes-demo
+          exit 1
+
+      - name: Run OWASP ZAP full scan
+        uses: zaproxy/action-full-scan@v0.13.0
+        with:
+          target: "http://localhost:4000"
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: "zap-vulnerable-notes-report"
+
+      - name: Run Trivy filesystem scan on insecure notes app
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: ./vulnerable-demo
+          format: table
+          output: security-reports/trivy-vulnerable-notes-fs-report.txt
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: 0
+
+      - name: Run Trivy image scan on insecure notes image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: insecure-notes-demo:local
+          format: table
+          output: security-reports/trivy-vulnerable-notes-image-report.txt
+          vuln-type: os,library
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: 0
+
+      - name: Upload vulnerable notes security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulnerable-notes-security-reports
+          path: security-reports/
+
+      - name: Show insecure notes container logs
+        if: always()
+        run: docker logs insecure-notes-demo || true
+
+      - name: Stop insecure notes container
+        if: always()
+        run: |
+          docker stop insecure-notes-demo || true
+          docker rm insecure-notes-demo || true

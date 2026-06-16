@@ -66,3 +66,74 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: 0
+
+  zap-baseline-scan:
+    name: OWASP ZAP Baseline Scan on Secure Notes API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare security reports directory
+        run: mkdir -p security-reports
+
+      - name: Build Secure Notes API image
+        run: docker build -t secure-notes-api:zap .
+
+      - name: Run Secure Notes API container
+        run: |
+          docker run -d \
+            --name secure-notes-api-zap \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            -e JWT_SECRET=zap-baseline-test-secret \
+            -e JWT_EXPIRES_IN=1h \
+            -e DB_FILE=/app/data/zap_secure_notes.sqlite \
+            secure-notes-api:zap
+
+      - name: Wait for Secure Notes API health check
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://localhost:3000/health; then
+              echo "Secure Notes API is running."
+              exit 0
+            fi
+
+            echo "Waiting for Secure Notes API..."
+            sleep 2
+          done
+
+          echo "Secure Notes API failed to start."
+          docker logs secure-notes-api-zap
+          exit 1
+
+      - name: Run OWASP ZAP baseline scan
+        run: |
+          docker run --rm \
+            --network host \
+            -v "$(pwd)/security-reports:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+              -t http://localhost:3000 \
+              -r zap-secure-notes-report.html \
+              -w zap-secure-notes-report.md \
+              -J zap-secure-notes-report.json \
+              || true
+
+      - name: Upload ZAP baseline report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-secure-notes-baseline-report
+          path: security-reports/
+
+      - name: Show Secure Notes API logs
+        if: always()
+        run: docker logs secure-notes-api-zap || true
+
+      - name: Stop Secure Notes API container
+        if: always()
+        run: |
+          docker stop secure-notes-api-zap || true
+          docker rm secure-notes-api-zap || true
