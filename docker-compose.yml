@@ -1,0 +1,26 @@
+services:
+  secure-notes-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: secure-notes-api
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-local-docker-dev-secret-change-me}
+      JWT_EXPIRES_IN: 1h
+      DB_FILE: /app/data/secure_notes.sqlite
+    volumes:
+      - secure_notes_data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  secure_notes_data:

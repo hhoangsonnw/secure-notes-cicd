@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+.github
+coverage
+data
+*.sqlite
+*.sqlite3
+.DS_Store
+docs/screenshots
