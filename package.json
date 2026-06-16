@@ -6,8 +6,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest",
-    "lint": "eslint src tests"
+    "test": "jest --runInBand",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "audit": "npm audit --audit-level=high",
+    "check": "npm run lint && npm test"
   },
   "keywords": [
     "ci-cd",
@@ -29,7 +32,9 @@
     "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "eslint": "^9.39.4",
+    "globals": "^17.6.0",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
