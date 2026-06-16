@@ -3,6 +3,11 @@ const helmet = require("helmet");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 
+const { initializeDatabase } = require("./db/database");
+const authRoutes = require("./routes/auth.routes");
+
+initializeDatabase();
+
 const app = express();
 
 app.use(helmet());
@@ -32,5 +37,7 @@ app.get("/health", (req, res) => {
     service: "secure-notes-api"
   });
 });
+
+app.use("/api/auth", authRoutes);
 
 module.exports = app;

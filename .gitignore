@@ -4,4 +4,7 @@ coverage
 dist
 .DS_Store
 database.sqlite
+*.sqlite
+*.sqlite3
+data/
 *.log
