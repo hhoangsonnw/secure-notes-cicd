@@ -4,14 +4,19 @@
   "description": "A beginner-intermediate CI/CD pipeline lab for a secure notes API",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest --runInBand",
-    "lint": "eslint src tests",
-    "lint:fix": "eslint src tests --fix",
-    "audit": "npm audit --audit-level=high",
-    "check": "npm run lint && npm test"
-  },
+  "start": "node src/server.js",
+  "dev": "nodemon src/server.js",
+  "test": "jest --runInBand",
+  "lint": "eslint src tests",
+  "lint:fix": "eslint src tests --fix",
+  "audit": "npm audit --audit-level=high",
+  "check": "npm run lint && npm test",
+  "docker:build": "docker build -t secure-notes-api:local .",
+  "docker:run": "docker run --rm -p 3000:3000 -e JWT_SECRET=local-docker-dev-secret-change-me secure-notes-api:local",
+  "compose:up": "docker compose up -d --build",
+  "compose:down": "docker compose down",
+  "compose:logs": "docker compose logs -f"
+},
   "keywords": [
     "ci-cd",
     "devsecops",
