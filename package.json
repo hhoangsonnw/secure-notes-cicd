@@ -1,0 +1,34 @@
+{
+  "name": "secure-notes-cicd",
+  "version": "1.0.0",
+  "description": "A beginner-intermediate CI/CD pipeline lab for a secure notes API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "lint": "eslint src tests"
+  },
+  "keywords": [
+    "ci-cd",
+    "devsecops",
+    "nodejs",
+    "express",
+    "security"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
+  }
+}
