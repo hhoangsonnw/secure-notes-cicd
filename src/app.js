@@ -5,6 +5,7 @@ const rateLimit = require("express-rate-limit");
 
 const { initializeDatabase } = require("./db/database");
 const authRoutes = require("./routes/auth.routes");
+const notesRoutes = require("./routes/notes.routes");
 
 initializeDatabase();
 
@@ -39,5 +40,6 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/notes", notesRoutes);
 
 module.exports = app;
