@@ -1,0 +1,46 @@
+name: Trivy Vulnerable Demo Scan
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trivy-vulnerable-demo:
+    name: Trivy Scan on Vulnerable Demo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan on vulnerable demo
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: ./vulnerable-demo
+          format: table
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: 0
+
+      - name: Build vulnerable demo image
+        run: docker build -t vulnerable-demo:trivy ./vulnerable-demo
+
+      - name: Run Trivy image scan on vulnerable demo
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: vulnerable-demo:trivy
+          format: table
+          vuln-type: os,library
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: 0

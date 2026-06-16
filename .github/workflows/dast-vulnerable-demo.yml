@@ -1,0 +1,68 @@
+name: DAST Vulnerable Demo
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  zap-full-scan:
+    name: OWASP ZAP Full Scan on Vulnerable Demo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build vulnerable demo image
+        run: docker build -t vulnerable-demo:local ./vulnerable-demo
+
+      - name: Run vulnerable demo container
+        run: |
+          docker run -d \
+            --name vulnerable-demo \
+            -p 4000:4000 \
+            vulnerable-demo:local
+
+      - name: Wait for vulnerable demo health check
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://localhost:4000/health; then
+              echo "Vulnerable demo app is running."
+              exit 0
+            fi
+
+            echo "Waiting for vulnerable demo app..."
+            sleep 2
+          done
+
+          echo "Vulnerable demo app failed to start."
+          docker logs vulnerable-demo
+          exit 1
+
+      - name: Run OWASP ZAP full scan
+        uses: zaproxy/action-full-scan@v0.13.0
+        with:
+          target: "http://localhost:4000"
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: "zap-vulnerable-demo-report"
+
+      - name: Show vulnerable demo logs
+        if: always()
+        run: docker logs vulnerable-demo || true
+
+      - name: Stop vulnerable demo container
+        if: always()
+        run: |
+          docker stop vulnerable-demo || true
+          docker rm vulnerable-demo || true
