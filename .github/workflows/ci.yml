@@ -1,0 +1,92 @@
+name: Secure Notes API CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  JWT_SECRET: "ci-test-jwt-secret"
+  JWT_EXPIRES_IN: "1h"
+  DB_FILE: "./data/ci_secure_notes.sqlite"
+
+jobs:
+  test:
+    name: Lint, Test, and Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run dependency audit
+        run: npm run audit
+
+  docker:
+    name: Build and Smoke Test Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t secure-notes-api:ci .
+
+      - name: Run Docker container
+        run: |
+          docker run -d \
+            --name secure-notes-api-ci \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            -e JWT_SECRET=ci-docker-jwt-secret \
+            -e JWT_EXPIRES_IN=1h \
+            -e DB_FILE=/app/data/ci_secure_notes.sqlite \
+            secure-notes-api:ci
+
+      - name: Wait for application health check
+        run: |
+          for i in {1..15}; do
+            if curl -fsS http://localhost:3000/health; then
+              echo "Application is healthy."
+              exit 0
+            fi
+
+            echo "Waiting for application to become healthy..."
+            sleep 2
+          done
+
+          echo "Application health check failed."
+          docker logs secure-notes-api-ci
+          exit 1
+
+      - name: Stop Docker container
+        if: always()
+        run: |
+          docker stop secure-notes-api-ci || true
+          docker rm secure-notes-api-ci || true
