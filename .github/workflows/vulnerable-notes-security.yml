@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  vulnerable-notes-security:
-    name: Scan Insecure Notes App
+  secret-scan:
+    name: Secret Scan with Gitleaks
     runs-on: ubuntu-latest
 
     steps:
@@ -25,39 +25,34 @@ jobs:
       - name: Prepare security reports directory
         run: mkdir -p security-reports
 
-      - name: Build insecure notes image
-        run: docker build -t insecure-notes-demo:local ./vulnerable-demo
-
-      - name: Run insecure notes container
+      - name: Run Gitleaks secret scan on insecure notes app
         run: |
-          docker run -d \
-            --name insecure-notes-demo \
-            -p 4000:4000 \
-            insecure-notes-demo:local
+          docker run --rm \
+            -v "$(pwd):/repo" \
+            zricethezav/gitleaks:latest \
+            detect \
+              --source="/repo/vulnerable-demo" \
+              --report-format=json \
+              --report-path="/repo/security-reports/gitleaks-vulnerable-notes-report.json" \
+              --redact \
+              || true
 
-      - name: Wait for insecure notes health check
-        run: |
-          for i in {1..20}; do
-            if curl -fsS http://localhost:4000/health; then
-              echo "Insecure Notes demo is running."
-              exit 0
-            fi
-
-            echo "Waiting for Insecure Notes demo..."
-            sleep 2
-          done
-
-          echo "Insecure Notes demo failed to start."
-          docker logs insecure-notes-demo
-          exit 1
-
-      - name: Run OWASP ZAP full scan
-        uses: zaproxy/action-full-scan@v0.13.0
+      - name: Upload Gitleaks report
+        uses: actions/upload-artifact@v4
         with:
-          target: "http://localhost:4000"
-          allow_issue_writing: false
-          fail_action: false
-          artifact_name: "zap-vulnerable-notes-report"
+          name: gitleaks-vulnerable-notes-report
+          path: security-reports/gitleaks-vulnerable-notes-report.json
+
+  trivy-fs-scan:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare security reports directory
+        run: mkdir -p security-reports
 
       - name: Run Trivy filesystem scan on insecure notes app
         uses: aquasecurity/trivy-action@master
@@ -70,10 +65,30 @@ jobs:
           ignore-unfixed: false
           exit-code: 0
 
+      - name: Upload Trivy filesystem report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-vulnerable-notes-filesystem-report
+          path: security-reports/trivy-vulnerable-notes-fs-report.txt
+
+  trivy-image-scan:
+    name: Trivy Docker Image Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare security reports directory
+        run: mkdir -p security-reports
+
+      - name: Build insecure notes image
+        run: docker build -t insecure-notes-demo:trivy ./vulnerable-demo
+
       - name: Run Trivy image scan on insecure notes image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: insecure-notes-demo:local
+          image-ref: insecure-notes-demo:trivy
           format: table
           output: security-reports/trivy-vulnerable-notes-image-report.txt
           vuln-type: os,library
@@ -81,18 +96,74 @@ jobs:
           ignore-unfixed: false
           exit-code: 0
 
-      - name: Upload vulnerable notes security reports
+      - name: Upload Trivy image report
         uses: actions/upload-artifact@v4
         with:
-          name: vulnerable-notes-security-reports
+          name: trivy-vulnerable-notes-image-report
+          path: security-reports/trivy-vulnerable-notes-image-report.txt
+
+  zap-full-scan:
+    name: OWASP ZAP Full Scan on Insecure Notes App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare security reports directory
+        run: mkdir -p security-reports
+
+      - name: Build insecure notes image
+        run: docker build -t insecure-notes-demo:zap ./vulnerable-demo
+
+      - name: Run insecure notes container
+        run: |
+          docker run -d \
+            --name insecure-notes-demo-zap \
+            -p 4000:4000 \
+            insecure-notes-demo:zap
+
+      - name: Wait for insecure notes health check
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://localhost:4000/health; then
+              echo "Insecure Notes app is running."
+              exit 0
+            fi
+
+            echo "Waiting for Insecure Notes app..."
+            sleep 2
+          done
+
+          echo "Insecure Notes app failed to start."
+          docker logs insecure-notes-demo-zap
+          exit 1
+
+      - name: Run OWASP ZAP full scan
+        run: |
+          docker run --rm \
+            --network host \
+            -v "$(pwd)/security-reports:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-full-scan.py \
+              -t http://localhost:4000 \
+              -r zap-vulnerable-notes-report.html \
+              -w zap-vulnerable-notes-report.md \
+              -J zap-vulnerable-notes-report.json \
+              || true
+
+      - name: Upload ZAP full scan report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-vulnerable-notes-report
           path: security-reports/
 
       - name: Show insecure notes container logs
         if: always()
-        run: docker logs insecure-notes-demo || true
+        run: docker logs insecure-notes-demo-zap || true
 
       - name: Stop insecure notes container
         if: always()
         run: |
-          docker stop insecure-notes-demo || true
-          docker rm insecure-notes-demo || true
+          docker stop insecure-notes-demo-zap || true
+          docker rm insecure-notes-demo-zap || true
