@@ -278,13 +278,3 @@ flowchart TD
     P --> Q[Publish Docker image to GHCR]
     Q --> R[Staging deployment simulation]
 ```
-
-## Contributing
-
-Issues and pull requests are welcome. Keep changes focused, run `npm run check`, and avoid committing real secrets or local database files.
-
-For changes under `vulnerable-demo/`, keep the intent clear: vulnerabilities should be controlled, documented, and safe to run locally.
-
-## License
-
-MIT
