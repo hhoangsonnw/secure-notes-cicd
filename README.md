@@ -2,24 +2,22 @@
 
 [![Secure Notes API CI](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/ci.yml/badge.svg)](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/ci.yml)
 [![Security Scanning](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/security.yml/badge.svg)](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/security.yml)
+[![Vulnerable Notes Security Demo](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/vulnerable-notes-security.yml/badge.svg)](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/vulnerable-notes-security.yml)
 [![Publish Docker Image](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/publish-image.yml/badge.svg)](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/publish-image.yml)
+[![Deploy to Staging Simulation](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/hhoangsonnw/secure-notes-cicd/actions/workflows/deploy-staging.yml)
 
-Secure Notes API is a compact DevSecOps lab built with Node.js, Express, SQLite, Docker, and GitHub Actions.
+A compact DevSecOps lab built around a Notes API.
 
-It provides a JWT-protected notes API and demonstrates a complete CI/CD flow with linting, automated tests, dependency auditing, secret scanning, vulnerability scanning, Docker image publishing, and staging deployment simulation.
+This repo shows the same backend idea in two stages: an intentionally insecure first version and a remediated version that passes CI/CD, security scans, Docker smoke tests, and a staging deployment simulation.
 
-## Features
+## What Is Included
 
-- User registration and login
-- Password hashing with bcrypt
-- JWT authentication for private routes
-- Notes CRUD scoped to the authenticated user
-- Input validation for users and notes
-- Security headers with Helmet
-- API rate limiting
-- SQLite persistence with `better-sqlite3`
-- Docker and Docker Compose support
-- GitHub Actions workflows for CI, security scanning, image publishing, and staging smoke tests
+| App | Path | Purpose |
+| --- | --- | --- |
+| Secure Notes API | `src/` | The remediated API with authentication, authorization, validation, security headers, rate limiting, and Docker support. |
+| Insecure Notes API Demo | `vulnerable-demo/` | A controlled vulnerable version used to demonstrate scanner findings and common secure coding mistakes. |
+
+Do not deploy the vulnerable demo publicly. It intentionally includes plaintext password storage, hardcoded secrets, SQL injection, broken access control, XSS, insecure cookies, missing security headers, verbose error disclosure, and outdated dependencies.
 
 ## Tech Stack
 
@@ -28,40 +26,32 @@ It provides a JWT-protected notes API and demonstrates a complete CI/CD flow wit
 | API | Node.js, Express |
 | Database | SQLite, better-sqlite3 |
 | Auth | bcryptjs, jsonwebtoken |
-| Security | Helmet, express-rate-limit, Gitleaks, Trivy |
+| Security controls | Helmet, express-rate-limit |
+| Security scanning | Gitleaks, Trivy, OWASP ZAP |
 | Testing | Jest, Supertest |
-| Delivery | Docker, Docker Compose, GitHub Actions, GitHub Container Registry |
+| Documentation | OpenAPI, Swagger UI |
+| Delivery | Docker, Docker Compose, GitHub Actions, GHCR |
 
-## API Endpoints
+## Features
 
-| Method | Endpoint | Auth | Description |
-| --- | --- | --- | --- |
-| `GET` | `/` | No | API status |
-| `GET` | `/health` | No | Health check |
-| `POST` | `/api/auth/register` | No | Create a user |
-| `POST` | `/api/auth/login` | No | Log in and receive a JWT |
-| `GET` | `/api/auth/me` | Yes | Get the current user |
-| `POST` | `/api/notes` | Yes | Create a note |
-| `GET` | `/api/notes` | Yes | List current user's notes |
-| `GET` | `/api/notes/:id` | Yes | Get one note |
-| `PUT` | `/api/notes/:id` | Yes | Update one note |
-| `DELETE` | `/api/notes/:id` | Yes | Delete one note |
+- Register, log in, and manage private notes.
+- Protect routes with JWT authentication.
+- Scope every note query to the authenticated user.
+- Hash passwords with bcrypt.
+- Validate and normalize user and note input.
+- Serve OpenAPI docs through Swagger UI.
+- Build and run with Docker or Docker Compose.
+- Run CI checks, security scans, image publishing, and staging smoke tests with GitHub Actions.
 
-Authenticated requests must include:
-
-```http
-Authorization: Bearer <token>
-```
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 20+
 - npm
-- Docker and Docker Compose, optional for container runs
+- Docker and Docker Compose
 
-### Run Locally
+### Run the Secure API
 
 ```bash
 npm install
@@ -69,36 +59,82 @@ cp .env.example .env
 npm run dev
 ```
 
-The API runs on `http://localhost:3000` by default.
-
-Check the health endpoint:
+The secure API runs at `http://localhost:3000`.
 
 ```bash
 curl http://localhost:3000/health
 ```
 
-### Environment Variables
+Swagger UI is available at:
+
+```text
+http://localhost:3000/api-docs
+```
+
+### Run the Insecure Demo
+
+```bash
+cd vulnerable-demo
+npm install
+npm start
+```
+
+The insecure demo runs at `http://localhost:4000`.
+
+```text
+http://localhost:4000/api-docs
+```
+
+## Configuration
+
+Create `.env` from `.env.example` before running the secure API locally.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | `3000` | API port |
+| `PORT` | `3000` | Secure API port |
 | `NODE_ENV` | `development` | Runtime environment |
 | `JWT_SECRET` | Required | Secret used to sign JWTs |
 | `JWT_EXPIRES_IN` | `1h` | JWT expiration time |
 | `DB_FILE` | `./data/secure_notes.sqlite` | SQLite database path |
 
+## Usage
+
+Authenticated requests use a bearer token:
+
+```http
+Authorization: Bearer <token>
+```
+
+Main secure API endpoints:
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/health` | No | Health check |
+| `GET` | `/api-docs` | No | Swagger UI |
+| `GET` | `/openapi.json` | No | OpenAPI spec |
+| `POST` | `/api/auth/register` | No | Create a user |
+| `POST` | `/api/auth/login` | No | Log in and receive a JWT |
+| `GET` | `/api/auth/me` | Yes | Get the current user |
+| `POST` | `/api/notes` | Yes | Create a note |
+| `GET` | `/api/notes` | Yes | List your notes |
+| `GET` | `/api/notes/:id` | Yes | Get one note |
+| `PUT` | `/api/notes/:id` | Yes | Update one note |
+| `DELETE` | `/api/notes/:id` | Yes | Delete one note |
+
+The insecure demo exposes similar API routes plus endpoints for SQL injection, reflected XSS, stored XSS, insecure cookies, and debug data exposure. See `vulnerable-demo/README.md` or `http://localhost:4000/api-docs` for the demo details.
+
 ## Development Commands
 
 ```bash
-npm test          # Run Jest tests
+npm test          # Run tests
 npm run lint      # Run ESLint
-npm run audit     # Run npm audit for high severity issues
+npm run audit     # Check high-severity npm advisories
 npm run check     # Run lint and tests
 ```
 
 ## Docker
 
-Build and run with Docker Compose:
+Run the secure API with Docker Compose:
 
 ```bash
 docker compose up -d --build
@@ -106,30 +142,35 @@ curl http://localhost:3000/health
 docker compose down
 ```
 
-Build the image manually:
+Build and run the secure image manually:
 
 ```bash
 docker build -t secure-notes-api:local .
-```
 
-Run the image manually:
-
-```bash
 docker run --rm -p 3000:3000 \
   -e JWT_SECRET=local-docker-dev-secret-change-me \
+  -e JWT_EXPIRES_IN=1h \
+  -e DB_FILE=/app/data/local_secure_notes.sqlite \
   secure-notes-api:local
+```
+
+Build and run the insecure demo image:
+
+```bash
+docker build -t insecure-notes-demo:local ./vulnerable-demo
+docker run --rm -p 4000:4000 insecure-notes-demo:local
 ```
 
 ## Published Image
 
-The project publishes Docker images to GitHub Container Registry:
+The secure API is published to GitHub Container Registry:
 
 ```text
 ghcr.io/hhoangsonnw/secure-notes-api:latest
 ghcr.io/hhoangsonnw/secure-notes-api:sha-<short-sha>
 ```
 
-Pull and run the latest image:
+Run the latest image:
 
 ```bash
 docker pull ghcr.io/hhoangsonnw/secure-notes-api:latest
@@ -141,51 +182,61 @@ docker run --rm -p 3000:3000 \
   ghcr.io/hhoangsonnw/secure-notes-api:latest
 ```
 
-## CI/CD
+## CI/CD and Security
 
-GitHub Actions workflows included in this repository:
-
-| Workflow | Purpose |
+| Workflow | What it does |
 | --- | --- |
-| `ci.yml` | Runs linting, tests, dependency audit, Docker build, and Docker smoke test |
-| `security.yml` | Runs Gitleaks secret scanning and Trivy filesystem/image vulnerability scans |
-| `publish-image.yml` | Builds and publishes Docker images to GHCR |
-| `deploy-staging.yml` | Pulls the published image and runs a staging health/API smoke test |
+| `ci.yml` | Lints, tests, audits dependencies, builds Docker image, and runs a smoke test. |
+| `security.yml` | Runs Gitleaks, Trivy filesystem/image scans, and OWASP ZAP baseline scan on the secure API. |
+| `vulnerable-notes-security.yml` | Scans the insecure demo with Gitleaks, Trivy, and OWASP ZAP full scan. |
+| `publish-image.yml` | Builds and publishes the secure API image to GHCR. |
+| `deploy-staging.yml` | Pulls the published image and runs staging health/API smoke tests. |
 
 Pipeline flow:
 
 ```text
-Push or pull request
+push or pull request
   -> lint, tests, audit
   -> Docker build and smoke test
-  -> secret and vulnerability scans
+  -> security scans
   -> publish image on main
-  -> staging deployment simulation
+  -> staging simulation
 ```
 
-## Security Controls
+Security tooling is useful, but it is not a complete review. This project also highlights issues such as IDOR and broken access control, which often need targeted tests or manual review because generic scanners may miss business logic flaws.
 
-- Passwords are stored as bcrypt hashes.
-- Private routes require JWT authentication.
-- Notes are always queried by `user_id` to prevent cross-user access.
-- Request input is validated and normalized.
-- Helmet adds common HTTP security headers.
-- Rate limiting reduces repeated-request abuse.
-- Runtime configuration is loaded through environment variables.
-- The Docker container runs as the non-root `node` user.
-- CI includes Gitleaks and Trivy scans.
+## Insecure vs Secure
+
+| Area | Insecure demo | Secure API |
+| --- | --- | --- |
+| Passwords | Plaintext | bcrypt hashes |
+| JWT secret | Hardcoded | Environment variable |
+| SQL | String concatenation | Prepared statements |
+| Authorization | Missing ownership checks | Notes scoped by `user_id` |
+| Validation | Weak or missing | User and note validation |
+| Security headers | Missing | Helmet enabled |
+| Rate limiting | Missing | express-rate-limit enabled |
+| Errors | Verbose database errors | Safer generic errors |
+| XSS | Raw HTML rendering | JSON API responses |
+| Dependencies | Intentionally outdated | Audited dependencies |
 
 ## Project Structure
 
 ```text
-src/
-  app.js                     # Express app setup
-  server.js                  # Runtime entry point
-  db/database.js             # SQLite initialization
+src/                         # Secure API
+  app.js
+  server.js
+  db/database.js
+  docs/openapi.js
   middleware/auth.middleware.js
-  routes/auth.routes.js
-  routes/notes.routes.js
-  utils/validation.js
+  routes/
+  utils/
+
+vulnerable-demo/             # Intentionally insecure demo API
+  src/
+  Dockerfile
+  package.json
+
 tests/                       # Jest and Supertest coverage
 .github/workflows/           # CI/CD and security workflows
 Dockerfile
@@ -194,10 +245,20 @@ docker-compose.yml
 
 ## Roadmap
 
-- Add OpenAPI/Swagger documentation
-- Add refresh tokens
-- Add database migrations
-- Enforce stricter vulnerability scan gates
-- Add branch protection rules
-- Deploy to a real cloud environment
+- Add refresh tokens.
+- Add database migrations.
+- Add stricter vulnerability scan gates.
+- Add authenticated OWASP ZAP scanning.
+- Generate an SBOM.
+- Sign published images.
+- Deploy the secure API to a real cloud environment.
 
+## Contributing
+
+Issues and pull requests are welcome. Keep changes focused, run `npm run check`, and avoid committing real secrets or local database files.
+
+For changes under `vulnerable-demo/`, keep the intent clear: vulnerabilities should be controlled, documented, and safe to run locally.
+
+## License
+
+MIT
