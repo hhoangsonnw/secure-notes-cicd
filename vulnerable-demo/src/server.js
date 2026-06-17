@@ -1,7 +1,11 @@
+
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 const Database = require("better-sqlite3");
+const swaggerUi = require("swagger-ui-express");
+
+const openapiSpec = require("./docs/openapi");
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -72,7 +76,9 @@ function requireAuth(req, res, next) {
     const token = authHeader.replace("Bearer ", "");
 
     if (!token) {
-      return res.status(401).json({ error: "Missing token." });
+      return res.status(401).json({
+        error: "Missing token."
+      });
     }
 
     const payload = jwt.verify(token, HARDCODED_JWT_SECRET);
@@ -86,6 +92,12 @@ function requireAuth(req, res, next) {
   }
 }
 
+app.get("/openapi.json", (req, res) => {
+  res.json(openapiSpec);
+});
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
+
 app.get("/", (req, res) => {
   res.send(`
     <html>
@@ -96,6 +108,12 @@ app.get("/", (req, res) => {
         <h1>Insecure Notes API Demo</h1>
         <p>This is the initial insecure version of the Notes app.</p>
         <p>It intentionally represents a developer's first attempt before secure coding guidelines were applied.</p>
+
+        <h2>Documentation</h2>
+        <ul>
+          <li><a href="/api-docs">Swagger UI documentation</a></li>
+          <li><a href="/openapi.json">Raw OpenAPI specification</a></li>
+        </ul>
 
         <h2>Demo links</h2>
         <ul>
@@ -128,7 +146,9 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.json({
     status: "running",
-    service: "insecure-notes-demo"
+    service: "insecure-notes-demo",
+    docs: "/api-docs",
+    openapi: "/openapi.json"
   });
 });
 
@@ -314,7 +334,9 @@ app.put("/api/notes/:id", requireAuth, (req, res) => {
 
     db.prepare(sql).run();
 
-    const updatedNote = db.prepare(`SELECT * FROM notes WHERE id = ${noteId}`).get();
+    const updatedNote = db
+      .prepare(`SELECT * FROM notes WHERE id = ${noteId}`)
+      .get();
 
     return res.json({
       message: "Note updated.",
@@ -408,7 +430,9 @@ app.get("/api/set-session", (req, res) => {
 
 app.get("/api/debug/users", (req, res) => {
   // Vulnerability: debug endpoint exposing sensitive data.
-  const users = db.prepare("SELECT id, username, email, password, role FROM users").all();
+  const users = db
+    .prepare("SELECT id, username, email, password, role FROM users")
+    .all();
 
   res.json({
     warning: "This endpoint intentionally exposes plaintext passwords.",
@@ -420,3 +444,4 @@ app.get("/api/debug/users", (req, res) => {
 app.listen(port, () => {
   console.log(`Insecure Notes demo app is running on port ${port}`);
 });
+
