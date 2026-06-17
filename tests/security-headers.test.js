@@ -3,7 +3,12 @@ const app = require("../src/app");
 
 describe("Security headers", () => {
   test("GET /health should include basic security headers", async () => {
-    const response = await request(app).get("/health");
+    const response = await request(app)
+      .get("/health")
+      .timeout({
+        response: 2000,
+        deadline: 3000
+      });
 
     expect(response.statusCode).toBe(200);
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
