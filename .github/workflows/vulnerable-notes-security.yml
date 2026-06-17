@@ -42,6 +42,7 @@ jobs:
         with:
           name: gitleaks-vulnerable-notes-report
           path: security-reports/gitleaks-vulnerable-notes-report.json
+          if-no-files-found: warn
 
   trivy-fs-scan:
     name: Trivy Filesystem Scan
@@ -70,6 +71,7 @@ jobs:
         with:
           name: trivy-vulnerable-notes-filesystem-report
           path: security-reports/trivy-vulnerable-notes-fs-report.txt
+          if-no-files-found: warn
 
   trivy-image-scan:
     name: Trivy Docker Image Scan
@@ -101,19 +103,15 @@ jobs:
         with:
           name: trivy-vulnerable-notes-image-report
           path: security-reports/trivy-vulnerable-notes-image-report.txt
+          if-no-files-found: warn
 
-    zap-full-scan:
+  zap-full-scan:
     name: OWASP ZAP Full Scan on Insecure Notes App
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Prepare security reports directory
-        run: |
-          mkdir -p security-reports
-          chmod -R 777 security-reports
 
       - name: Build insecure notes image
         run: docker build -t insecure-notes-demo:zap ./vulnerable-demo
@@ -142,31 +140,12 @@ jobs:
           exit 1
 
       - name: Run OWASP ZAP full scan
-        run: |
-          docker run --rm \
-            --network host \
-            -v "${{ github.workspace }}/security-reports:/zap/wrk:rw" \
-            ghcr.io/zaproxy/zaproxy:stable \
-            zap-full-scan.py \
-              -t http://localhost:4000 \
-              -r zap-vulnerable-notes-report.html \
-              -w zap-vulnerable-notes-report.md \
-              -J zap-vulnerable-notes-report.json \
-              || true
-
-      - name: List ZAP report files
-        if: always()
-        run: |
-          echo "Files inside security-reports:"
-          ls -la security-reports || true
-
-      - name: Upload ZAP full scan report
-        uses: actions/upload-artifact@v4
-        if: always()
+        uses: zaproxy/action-full-scan@v0.13.0
         with:
-          name: zap-vulnerable-notes-report
-          path: security-reports/
-          if-no-files-found: warn
+          target: "http://localhost:4000"
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: "zap-vulnerable-notes-report"
 
       - name: Show insecure notes container logs
         if: always()
