@@ -243,15 +243,41 @@ Dockerfile
 docker-compose.yml
 ```
 
-## Roadmap
+## Project WorkFlow
 
-- Add refresh tokens.
-- Add database migrations.
-- Add stricter vulnerability scan gates.
-- Add authenticated OWASP ZAP scanning.
-- Generate an SBOM.
-- Sign published images.
-- Deploy the secure API to a real cloud environment.
+```mermaid
+flowchart TD
+    A[Developer builds initial Notes API] --> B[Insecure Notes API Demo<br/>vulnerable-demo/]
+
+    B --> C[CI/CD Security Scanning]
+
+    C --> D[Gitleaks<br/>Secret scanning]
+    C --> E[Trivy<br/>Filesystem and image scanning]
+    C --> F[OWASP ZAP<br/>Runtime web scanning]
+
+    D --> G[Security findings]
+    E --> G
+    F --> G
+
+    G --> H[Developer reviews vulnerabilities]
+    H --> I[Apply security remediations]
+
+    I --> J[Secure Notes API<br/>src/]
+
+    J --> K[CI Pipeline]
+    K --> L[Linting]
+    K --> M[Automated tests]
+    K --> N[npm audit]
+    K --> O[Docker build and smoke test]
+
+    L --> P[Secure app validated]
+    M --> P
+    N --> P
+    O --> P
+
+    P --> Q[Publish Docker image to GHCR]
+    Q --> R[Staging deployment simulation]
+```
 
 ## Contributing
 
