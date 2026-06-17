@@ -102,7 +102,7 @@ jobs:
           name: trivy-vulnerable-notes-image-report
           path: security-reports/trivy-vulnerable-notes-image-report.txt
 
-  zap-full-scan:
+    zap-full-scan:
     name: OWASP ZAP Full Scan on Insecure Notes App
     runs-on: ubuntu-latest
 
@@ -111,7 +111,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Prepare security reports directory
-        run: mkdir -p security-reports
+        run: |
+          mkdir -p security-reports
+          chmod -R 777 security-reports
 
       - name: Build insecure notes image
         run: docker build -t insecure-notes-demo:zap ./vulnerable-demo
@@ -143,7 +145,7 @@ jobs:
         run: |
           docker run --rm \
             --network host \
-            -v "$(pwd)/security-reports:/zap/wrk:rw" \
+            -v "${{ github.workspace }}/security-reports:/zap/wrk:rw" \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-full-scan.py \
               -t http://localhost:4000 \
@@ -152,11 +154,19 @@ jobs:
               -J zap-vulnerable-notes-report.json \
               || true
 
+      - name: List ZAP report files
+        if: always()
+        run: |
+          echo "Files inside security-reports:"
+          ls -la security-reports || true
+
       - name: Upload ZAP full scan report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: zap-vulnerable-notes-report
           path: security-reports/
+          if-no-files-found: warn
 
       - name: Show insecure notes container logs
         if: always()
