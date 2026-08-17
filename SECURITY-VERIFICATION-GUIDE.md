@@ -73,11 +73,13 @@ Expect `HTTP/1.1 400` and a concise validation message.
 
 ### 2. Hardcoded secrets and forged tokens
 
-The signing secret is loaded from `JWT_SECRET`, never returned by an endpoint, and an invented token has no privileged effect:
+The signing secret is loaded from `JWT_SECRET`, never returned by an endpoint, and an invented token has no privileged effect. Set the clearly non-secret demo value in a shell variable first:
 
 ```bash
+INVALID_BEARER=not-a-signed-token
+
 curl -isS "$DEMO_URL/api/auth/me" \
-  -H 'Authorization: Bearer not-a-signed-token'
+  -H "Authorization: Bearer $INVALID_BEARER"
 ```
 
 Expect `401` and `Invalid or expired token.` without token parsing detail or a secret.
