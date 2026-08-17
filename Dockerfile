@@ -11,7 +11,6 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY src ./src
-COPY .env.example ./.env.example
 
 RUN mkdir -p /app/data \
     && chown -R node:node /app

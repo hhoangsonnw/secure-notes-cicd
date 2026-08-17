@@ -19,6 +19,8 @@ This repo shows the same backend idea in two stages: an intentionally insecure f
 
 Do not deploy the vulnerable demo publicly. It intentionally includes plaintext password storage, hardcoded secrets, SQL injection, broken access control, XSS, insecure cookies, missing security headers, verbose error disclosure, and outdated dependencies.
 
+Guided walkthroughs: [secure verification](SECURITY-VERIFICATION-GUIDE.md) · [insecure demo](vulnerable-demo/DEMO-GUIDE.md)
+
 ## Tech Stack
 
 | Area | Tools |
@@ -70,6 +72,8 @@ Swagger UI is available at:
 ```text
 http://localhost:3000/api-docs
 ```
+
+Use [SECURITY-VERIFICATION-GUIDE.md](SECURITY-VERIFICATION-GUIDE.md) to demonstrate how each intentionally insecure behavior in `vulnerable-demo/` is remediated by the secure API.
 
 ### Run the Insecure Demo
 
@@ -130,6 +134,7 @@ npm test          # Run tests
 npm run lint      # Run ESLint
 npm run audit     # Check high-severity npm advisories
 npm run check     # Run lint and tests
+npm --prefix vulnerable-demo test  # Run the isolated insecure-demo smoke tests
 ```
 
 ## Docker
@@ -218,22 +223,32 @@ Security tooling is useful, but it is not a complete review. This project also h
 | Rate limiting | Missing | express-rate-limit enabled |
 | Errors | Verbose database errors | Safer generic errors |
 | XSS | Raw HTML rendering | JSON API responses |
-| Dependencies | Intentionally outdated | Audited dependencies |
+| Dependencies | Deliberate vulnerable audit fixtures | Audited dependencies |
 
 ## Project Structure
 
 ```text
 src/                         # Secure API
-  app.js
-  server.js
+  app.js                      # Middleware and route assembly
+  server.js                   # Runtime bootstrap
   db/database.js
-  docs/openapi.js
+  docs/
+    openapi.js
+    swagger-ui-options.js
   middleware/auth.middleware.js
   routes/
+  ui/secure-landing-page.js
   utils/
+  verification/scenarios.js
 
 vulnerable-demo/             # Intentionally insecure demo API
   src/
+    app.js                    # Demo routes and seeded in-memory database
+    server.js                 # Runtime bootstrap
+    docs/openapi.js
+    ui/
+  test/smoke.test.js
+  DEMO-GUIDE.md
   Dockerfile
   package.json
 
@@ -243,7 +258,7 @@ Dockerfile
 docker-compose.yml
 ```
 
-## Project WorkFlow
+## Delivery Flow
 
 ```mermaid
 flowchart TD

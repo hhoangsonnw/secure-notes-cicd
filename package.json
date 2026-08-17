@@ -2,7 +2,11 @@
   "name": "secure-notes-cicd",
   "version": "1.0.0",
   "description": "A beginner-intermediate CI/CD pipeline lab for a secure notes API",
+  "private": true,
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
@@ -29,7 +33,6 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.11.1",
-    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",

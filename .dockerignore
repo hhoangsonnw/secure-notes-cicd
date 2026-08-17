@@ -1,6 +1,7 @@
 node_modules
 npm-debug.log
 .env
+.env.example
 .git
 .gitignore
 .github
@@ -10,3 +11,9 @@ data
 *.sqlite3
 .DS_Store
 docs/screenshots
+tests
+docs
+vulnerable-demo
+README.md
+SECURITY-VERIFICATION-GUIDE.md
+docker-compose.yml

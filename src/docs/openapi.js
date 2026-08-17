@@ -3,19 +3,25 @@ const openapiSpec = {
   info: {
     title: "Secure Notes API",
     version: "1.0.0",
-    description:
-      "A security-focused Notes API built for CI/CD and DevSecOps practice. The API supports user registration, JWT login, authenticated user profile lookup, and secure notes CRUD operations."
+    description: `
+> **Protected local API environment.** Authentication, validation, rate limiting, security headers, and note ownership controls are enabled.
+
+Start with **Authentication**: register an account, log in, click **Authorize**, and use the bearer token for the private Notes workflow.
+
+Start with **Security Verification Demos**: nine executable endpoint flows cover all 13 remediated checks. The verification endpoint lists every control, including removed-route, rate-limit, and dependency-audit checks.
+`
   },
   servers: [
     {
-      url: "http://localhost:3000",
-      description: "Local development server"
+      url: "/",
+      description: "The same local origin serving Swagger UI"
     }
   ],
   tags: [
     {
-      name: "Health",
-      description: "API health check"
+      name: "Security Verification Demos",
+      description:
+        "Nine executable local flows cover all 13 remediated insecure-demo issues. Open the verification status endpoint for the complete checklist; use SECURITY-VERIFICATION-GUIDE.md for multi-request and removed-route checks."
     },
     {
       name: "Authentication",
@@ -24,6 +30,10 @@ const openapiSpec = {
     {
       name: "Notes",
       description: "Authenticated notes CRUD endpoints"
+    },
+    {
+      name: "Health",
+      description: "API health check"
     }
   ],
   components: {
@@ -114,51 +124,77 @@ const openapiSpec = {
           }
         }
       },
-      Note: {
+      SecurityVerificationScenario: {
         type: "object",
+        required: ["id", "status", "evidence", "interactiveCheck"],
         properties: {
           id: {
-            type: "integer",
-            example: 1
-          },
-          user_id: {
-            type: "integer",
-            example: 1
-          },
-          title: {
             type: "string",
-            example: "My secure note"
+            example: "sql-injection"
           },
-          content: {
+          status: {
             type: "string",
-            example: "This note belongs only to the authenticated user."
+            example: "resolved"
           },
-          created_at: {
+          evidence: {
             type: "string",
-            example: "2026-06-17 10:00:00"
+            example: "Authentication and note queries use parameterized SQL statements."
           },
-          updated_at: {
+          interactiveCheck: {
             type: "string",
-            example: "2026-06-17 10:00:00"
+            example: "POST /api/auth/login"
           }
         }
       },
-      ErrorResponse: {
+      SecurityVerificationResponse: {
         type: "object",
+        required: ["status", "service", "scenarios"],
         properties: {
-          error: {
+          status: {
             type: "string",
-            example: "Unauthorized."
+            example: "resolved"
+          },
+          service: {
+            type: "string",
+            example: "secure-notes-api"
+          },
+          scenarios: {
+            type: "array",
+            items: {
+              $ref: "#/components/schemas/SecurityVerificationScenario"
+            }
           }
         }
       }
     }
   },
   paths: {
+    "/api/security/verification": {
+      get: {
+        tags: ["Security Verification Demos"],
+        summary: "List all 13 resolved security scenarios",
+        description:
+          "Safe, non-sensitive verification summary for the secure counterpart of the insecure demo. Each scenario names the mitigation and its corresponding interactive check. The complete reproduction steps are in `SECURITY-VERIFICATION-GUIDE.md`.",
+        responses: {
+          200: {
+            description: "All resolved security scenarios and their verification pointers.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/SecurityVerificationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       get: {
-        tags: ["Health"],
-        summary: "Check API health",
+        tags: ["Security Verification Demos", "Health"],
+        summary: "Check protected health and rate limits",
+        description:
+          "Inspect this response to verify Helmet headers. Repeating this request more than 100 times in 15 minutes produces `429 Too Many Requests`; see the verification guide for the local-only command.",
         responses: {
           200: {
             description: "API is healthy"
@@ -168,14 +204,34 @@ const openapiSpec = {
     },
     "/api/auth/register": {
       post: {
-        tags: ["Authentication"],
-        summary: "Register a new user",
+        tags: ["Security Verification Demos", "Authentication"],
+        summary: "Register with validation and private passwords",
+        description:
+          "Use the **Blocked weak input** example to verify that malformed registration data receives `400`. A successful registration response includes only the public user fields; no plaintext password or hash is returned.",
         requestBody: {
           required: true,
           content: {
             "application/json": {
               schema: {
                 $ref: "#/components/schemas/RegisterRequest"
+              },
+              examples: {
+                validRegistration: {
+                  summary: "Valid registration",
+                  value: {
+                    username: "secure_demo_user",
+                    email: "secure-demo@example.com",
+                    password: "Password123"
+                  }
+                },
+                blockedWeakInput: {
+                  summary: "Blocked weak input",
+                  value: {
+                    username: "",
+                    email: "not-an-email",
+                    password: "short"
+                  }
+                }
               }
             }
           }
@@ -195,14 +251,32 @@ const openapiSpec = {
     },
     "/api/auth/login": {
       post: {
-        tags: ["Authentication"],
-        summary: "Login and receive JWT token",
+        tags: ["Security Verification Demos", "Authentication"],
+        summary: "Log in with parameterized, hashed credentials",
+        description:
+          "Use the **SQL injection probe** example. It is treated as a literal email value and receives a generic authentication failure rather than bypassing the password check. The request never exposes a password hash.",
         requestBody: {
           required: true,
           content: {
             "application/json": {
               schema: {
                 $ref: "#/components/schemas/LoginRequest"
+              },
+              examples: {
+                registeredUserLogin: {
+                  summary: "Login after registration",
+                  value: {
+                    email: "secure-demo@example.com",
+                    password: "Password123"
+                  }
+                },
+                sqlInjectionProbe: {
+                  summary: "SQL injection probe blocked by parameterized query",
+                  value: {
+                    email: "attacker'@example.com",
+                    password: "does-not-matter"
+                  }
+                }
               }
             }
           }
@@ -226,8 +300,10 @@ const openapiSpec = {
     },
     "/api/auth/me": {
       get: {
-        tags: ["Authentication"],
-        summary: "Get current authenticated user",
+        tags: ["Security Verification Demos", "Authentication"],
+        summary: "Verify the current user with a valid JWT",
+        description:
+          "Use **Authorize** with a login token. An arbitrary or forged-looking token receives the generic `401 Invalid or expired token.` response and no signing secret is exposed.",
         security: [
           {
             bearerAuth: []
@@ -246,7 +322,7 @@ const openapiSpec = {
     "/api/notes": {
       get: {
         tags: ["Notes"],
-        summary: "List notes owned by the authenticated user",
+        summary: "List notes owned by the current user",
         security: [
           {
             bearerAuth: []
@@ -262,8 +338,10 @@ const openapiSpec = {
         }
       },
       post: {
-        tags: ["Notes"],
-        summary: "Create a new note",
+        tags: ["Security Verification Demos", "Notes"],
+        summary: "Create a validated JSON note",
+        description:
+          "Use the **Blocked empty note** example to verify validation. The API returns JSON only and exposes no raw HTML note-rendering route; presentation layers must still render note content safely.",
         security: [
           {
             bearerAuth: []
@@ -275,6 +353,29 @@ const openapiSpec = {
             "application/json": {
               schema: {
                 $ref: "#/components/schemas/NoteRequest"
+              },
+              examples: {
+                validNote: {
+                  summary: "Valid private note",
+                  value: {
+                    title: "Secure demo note",
+                    content: "This note belongs only to the authenticated user."
+                  }
+                },
+                blockedEmptyNote: {
+                  summary: "Blocked empty note",
+                  value: {
+                    title: "",
+                    content: ""
+                  }
+                },
+                jsonOnlyXssProbe: {
+                  summary: "JSON-only XSS storage probe",
+                  value: {
+                    title: "Untrusted text",
+                    content: "<script>alert(\"not-rendered-by-this-api\")</script>"
+                  }
+                }
               }
             }
           }
@@ -294,8 +395,10 @@ const openapiSpec = {
     },
     "/api/notes/{id}": {
       get: {
-        tags: ["Notes"],
-        summary: "Get one note owned by the authenticated user",
+        tags: ["Security Verification Demos", "Notes"],
+        summary: "Read only your own note",
+        description:
+          "After creating a note with one user, authorize as a second user and request that ID. The secure API returns `404 Note not found.` instead of leaking another user's note.",
         security: [
           {
             bearerAuth: []
@@ -324,8 +427,10 @@ const openapiSpec = {
         }
       },
       put: {
-        tags: ["Notes"],
-        summary: "Update one note owned by the authenticated user",
+        tags: ["Security Verification Demos", "Notes"],
+        summary: "Update only your own note",
+        description:
+          "A second authenticated user receives `404 Note not found.` when attempting to overwrite the first user's note. This prevents the insecure demo's IDOR update.",
         security: [
           {
             bearerAuth: []
@@ -367,8 +472,10 @@ const openapiSpec = {
         }
       },
       delete: {
-        tags: ["Notes"],
-        summary: "Delete one note owned by the authenticated user",
+        tags: ["Security Verification Demos", "Notes"],
+        summary: "Delete only your own note",
+        description:
+          "A second authenticated user receives `404 Note not found.` when attempting to delete the first user's note. This prevents the insecure demo's IDOR delete.",
         security: [
           {
             bearerAuth: []

@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+.env
+.git
+coverage
+data
+*.sqlite
+*.sqlite3
+.DS_Store
+*.log
+test
+README.md
+DEMO-GUIDE.md
